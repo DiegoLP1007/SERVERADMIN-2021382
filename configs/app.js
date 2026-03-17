@@ -3,72 +3,55 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import helmet from 'helmet';
 import { corsOptions } from './cors-configuration.js';
-import { dbConnection } from './db.js';
+import helmet from 'helmet';
 import { helmetConfiguration } from './helmet-configuration.js';
-import { requestLimit } from '../middlewares/request-limit.js';
-import { errorHandler } from '../middlewares/handle-errors.js';
 
-// Importar rutas
-import fieldRoutes from '../src/fields/field.routes.js';
-// Se agrega la importación de las rutas de reservaciones
-import reservationRoutes from '../src/reservations/reservation.routes.js';
-import teamRoutes from '../src/teams/team.routes.js';
-import tournamentRoutes from '../src/tournaments/tournament.routes.js';
+// Ruta base de la API (prefijo común para todos los endpoints)
+const BASE_PATH = '/kinalSportsAdmin/v1';
 
-const BASE_URL = '/kinalSportAdmin/v1';
 
-// Configuración de mi aplicación
+// Configuración de middlewares
+// ----------------------------------------
 const middlewares = (app) => {
-    app.use(helmet(helmetConfiguration));
-    app.use(cors(corsOptions));
-    app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-    app.use(express.json({ limit: '10mb' }));
-    app.use(requestLimit);
-    app.use(morgan('dev'));
-}
-
-// Configuración de rutas
-const routes = (app) => {
-    app.use(`${BASE_URL}/fields`, fieldRoutes);
-    // Se registra el endpoint para reservaciones
-    app.use(`${BASE_URL}/reservations`, reservationRoutes);
-    app.use(`${BASE_URL}/teams`, teamRoutes);
-    app.use(`${BASE_URL}/tournaments`, tournamentRoutes);
-}
+app.use(helmet(helmetConfiguration));
+app.use(cors(corsOptions));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(morgan('dev'));
+};
 
 // Función para iniciar el servidor
-const initServer = async (app) => {
-    app = express();
+// -----------------------------------------
+export const initServer = async () => {
+  const app = express();
+  const PORT = process.env.PORT || 3001;
+  
+	// Confía en el primer proxy (necesario cuando la app está detrás de un proxy o balanceador)
+	app.set('trust proxy', 1);
+	
 
-    const PORT = process.env.PORT || 3001;
+  try {
+	  // Registra y aplica los middlewares globales de la aplicación
+    middlewares(app);
 
-    try {
-        await dbConnection(); // Es buena práctica usar await aquí si dbConnection es asíncrona
-
-        middlewares(app);
-        routes(app);
-        app.use(errorHandler);
-
-        app.listen(PORT, () => {
-            console.log(`Servidor corriendo en el puerto ${PORT}`);
-            console.log(`Base URL: http://localhost:${PORT}${BASE_URL}`);
-            console.log(`Reservations: http://localhost:${PORT}${BASE_URL}/reservations`);
-        });
-
-        // Primera ruta 
-        app.get(`${BASE_URL}/health`, (req, res) => {
-            res.status(200).json({
-                status: 'ok',
-                service: 'KinalSport Admin',
-                version: '1.0.0'
-            });
-        });
-
-    } catch (error) {
-        console.log("Error al iniciar el servidor:", error);
-    }
-}
-
-export { initServer };
+		// Iniciar servidor en el puerto especificado
+    app.listen(PORT, () => {
+      console.log(`KinalSports Admin Server running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}${BASE_PATH}/health`);
+    });
+    
+		// Health Check Endpoint - CONVENCIÓN de monitoreo
+		// Utilizado por sistemas externos para verificar estado del servicio
+    app.get(`${BASE_PATH}/health`, (req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        service: 'KinalSports Admin API'
+    });
+});
+    
+  } catch (err) {
+    console.error(`Error starting Admin Server: ${err.message}`);
+    process.exit(1);
+  }
+};
