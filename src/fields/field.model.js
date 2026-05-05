@@ -35,7 +35,7 @@ const fieldSchema = new mongoose.Schema({
         trim: true,
         maxLength: [500, 'La descripción no puede exceder 500 caracteres'],
     },
-    photo: {
+    image: {
         type: String,
         // valor por defecto
         default: 'fields/kinal_sports_nyvxo5',

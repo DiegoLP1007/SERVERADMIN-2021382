@@ -1,26 +1,26 @@
 import Field from './field.model.js';
 import { cloudinary } from '../../middlewares/file-uploader.js';
- 
+
 // Obtener todos los campos con paginación y filtros
 export const getFields = async (req, res) => {
   try {
     const { page = 1, limit = 10, isActive = true } = req.query;
- 
+
     const filter = { isActive };
- 
+
     const options = {
       page: parseInt(page),
       limit: parseInt(limit),
       sort: { createdAt: -1 },
     };
- 
+
     const fields = await Field.find(filter)
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .sort(options.sort);
- 
+
     const total = await Field.countDocuments(filter);
- 
+
     res.status(200).json({
       success: true,
       data: fields,
@@ -39,21 +39,21 @@ export const getFields = async (req, res) => {
     });
   }
 };
- 
+
 // Obtener campo por ID
 export const getFieldById = async (req, res) => {
   try {
     const { id } = req.params;
- 
+
     const field = await Field.findById(id);
- 
+
     if (!field) {
       return res.status(404).json({
         success: false,
         message: 'Campo no encontrado',
       });
     }
- 
+
     res.status(200).json({
       success: true,
       data: field,
@@ -66,26 +66,26 @@ export const getFieldById = async (req, res) => {
     });
   }
 };
- 
+
 // Crear nuevo campo
 export const createField = async (req, res) => {
   try {
     const fieldData = req.body;
- 
+
     if (req.file) {
       const extension = req.file.path.split('.').pop();
       const filename = req.file.filename;
       const relativePath = filename.substring(filename.indexOf('fields/'));
- 
-      fieldData.photo = `${relativePath}.${extension}`;
+
+      fieldData.image = `${relativePath}.${extension}`;
     } else {
       // Si no se envía archivo, usar imagen por defecto
-      fieldData.photo = 'fields/kinal_sports_nyvxo5';
+      fieldData.image = 'fields/kinal_sports_nyvxo5';
     }
- 
+
     const field = new Field(fieldData);
     await field.save();
- 
+
     res.status(201).json({
       success: true,
       message: 'Campo creado exitosamente',
@@ -99,24 +99,24 @@ export const createField = async (req, res) => {
     });
   }
 };
- 
+
 // Actualizar campo
 export const updateField = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
- 
+
     if (req.file) {
       const currentField = await Field.findById(id);
- 
-      if (currentField && currentField.photo) {
-        const photoPath = currentField.photo;
+
+      if (currentField && currentField.image) {
+        const photoPath = currentField.image;
         const photoWithoutExt = photoPath.substring(
           0,
           photoPath.lastIndexOf('.')
         );
         const publicId = `kinal_sports/${photoWithoutExt}`;
- 
+
         try {
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
@@ -125,27 +125,27 @@ export const updateField = async (req, res) => {
           );
         }
       }
- 
+
       const extension = req.file.path.split('.').pop();
       const filename = req.file.filename;
       const relativePath = filename.includes('fields/')
         ? filename.substring(filename.indexOf('fields/'))
         : filename;
-      updateData.photo = `${relativePath}.${extension}`;
+      updateData.image = `${relativePath}.${extension}`;
     }
- 
+
     const field = await Field.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
     });
- 
+
     if (!field) {
       return res.status(404).json({
         success: false,
         message: 'Campo no encontrado',
       });
     }
- 
+
     res.status(200).json({
       success: true,
       message: 'Campo actualizado exitosamente',
@@ -159,7 +159,7 @@ export const updateField = async (req, res) => {
     });
   }
 };
- 
+
 // Cambiar estado del campo (activar/desactivar)
 export const changeFieldStatus = async (req, res) => {
   try {
@@ -167,20 +167,20 @@ export const changeFieldStatus = async (req, res) => {
     // Detectar si es activate o deactivate desde la URL
     const isActive = req.url.includes('/activate');
     const action = isActive ? 'activado' : 'desactivado';
- 
+
     const field = await Field.findByIdAndUpdate(
       id,
       { isActive },
       { new: true }
     );
- 
+
     if (!field) {
       return res.status(404).json({
         success: false,
         message: 'Campo no encontrado',
       });
     }
- 
+
     res.status(200).json({
       success: true,
       message: `Campo ${action} exitosamente`,
